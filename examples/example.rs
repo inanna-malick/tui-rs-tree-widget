@@ -37,6 +37,7 @@ impl<'a> App<'a> {
             ]),
         }
     }
+
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -67,7 +68,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+fn run_app<'a, B: Backend>(terminal: &mut Terminal<B>, mut app: App<'a>) -> io::Result<()> {
     loop {
         terminal.draw(|f| {
             let area = f.size();
@@ -91,6 +92,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
         if let Event::Key(key) = event::read()? {
             match key.code {
                 KeyCode::Char('q') => return Ok(()),
+                KeyCode::Char('a') => {
+                    app.tree.with_selected_leaf(|node| if let Some(node) = node {
+                        node.add_child(TreeItem::new_leaf("text"));
+                    });
+                },
                 KeyCode::Char('\n' | ' ') => app.tree.toggle(),
                 KeyCode::Left => app.tree.left(),
                 KeyCode::Right => app.tree.right(),

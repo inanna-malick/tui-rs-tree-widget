@@ -204,6 +204,10 @@ impl<'a> TreeItem<'a> {
         &self.children
     }
 
+    pub fn children_mut<'b>(&'b mut self) -> &'b mut [TreeItem<'a>] where 'a: 'b{
+        &mut self.children
+    }
+
     pub fn child(&self, index: usize) -> Option<&Self> {
         self.children.get(index)
     }

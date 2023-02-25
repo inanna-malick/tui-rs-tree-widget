@@ -41,11 +41,32 @@ impl<'a> StatefulTree<'a> {
         self.state.key_left();
     }
 
-    pub fn right(&mut self) {
+    pub fn right<'b>(&'b mut self) {
         self.state.key_right();
     }
 
     pub fn toggle(&mut self) {
         self.state.toggle_selected();
+    }
+
+    fn items_mut<'b>(&'b mut self) -> &'b mut Vec<TreeItem<'a>> {
+        &mut self.items
+    }
+
+    pub fn with_selected_leaf<'b>(&'b mut self, f: impl FnOnce(Option<&'b mut TreeItem<'a>>)) where 'a: 'b
+     {
+        fn traverse<'short, 'long>(path: Vec<usize>, nodes: &'short mut [TreeItem<'long>]) -> Option<&'short mut TreeItem<'long>> where 'long: 'short {
+            let first = path.first()?;
+            let node = nodes.get_mut(*first)?;
+            if path.len() == 1 {
+                Some(node)
+            } else {
+                traverse(path[1..].to_owned(), node.children_mut())
+            }
+        }
+
+        let res = traverse(self.state.selected(), self.items_mut());
+
+        f(res)
     }
 }
