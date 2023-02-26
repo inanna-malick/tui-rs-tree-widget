@@ -102,7 +102,7 @@ impl TreeState {
     }
 
     /// Select the last node.
-    pub fn select_last(&mut self, items: &[TreeItem]) {
+    pub fn select_last<A>(&mut self, items: &[TreeItem<A>]) {
         let visible = flatten(&self.get_all_opened(), items);
         let new_identifier = visible
             .last()
@@ -113,7 +113,7 @@ impl TreeState {
 
     /// Handles the up arrow key.
     /// Moves up in the current depth or to its parent.
-    pub fn key_up(&mut self, items: &[TreeItem]) {
+    pub fn key_up<A>(&mut self, items: &[TreeItem<A>]) {
         let visible = flatten(&self.get_all_opened(), items);
         let current_identifier = self.selected();
         let current_index = visible
@@ -128,7 +128,7 @@ impl TreeState {
 
     /// Handles the down arrow key.
     /// Moves down in the current depth or into a child node.
-    pub fn key_down(&mut self, items: &[TreeItem]) {
+    pub fn key_down<A>(&mut self, items: &[TreeItem<A>]) {
         let visible = flatten(&self.get_all_opened(), items);
         let current_identifier = self.selected();
         let current_index = visible
@@ -170,41 +170,47 @@ impl TreeState {
 /// let b = TreeItem::new("root", vec![a]);
 /// ```
 #[derive(Debug, Clone)]
-pub struct TreeItem<'a> {
-    text: Text<'a>,
+pub struct TreeItem<A> {
+    elem: A, // TODO: text as fn of A?
     style: Style,
-    children: Vec<TreeItem<'a>>,
+    children: Vec<TreeItem<A>>,
 }
 
-impl<'a> TreeItem<'a> {
-    pub fn new_leaf<T>(text: T) -> Self
-    where
-        T: Into<Text<'a>>,
-    {
+pub trait TreeItemRender {
+    fn as_text(&self) -> Text;
+}
+
+impl TreeItemRender for &str {
+    fn as_text(&self) -> Text {
+        (*self).into()
+    }
+}
+
+impl<A: TreeItemRender> TreeItem<A> {
+    pub fn new_leaf(elem: A) -> Self {
         Self {
-            text: text.into(),
             style: Style::default(),
             children: Vec::new(),
+            elem,
         }
     }
 
-    pub fn new<T, Children>(text: T, children: Children) -> Self
+    pub fn new<Children>(elem: A, children: Children) -> Self
     where
-        T: Into<Text<'a>>,
-        Children: Into<Vec<TreeItem<'a>>>,
+        Children: Into<Vec<TreeItem<A>>>,
     {
         Self {
-            text: text.into(),
             style: Style::default(),
             children: children.into(),
+            elem,
         }
     }
 
-    pub fn children(&self) -> &[TreeItem] {
+    pub fn children(&self) -> &[TreeItem<A>] {
         &self.children
     }
 
-    pub fn children_mut<'b>(&'b mut self) -> &'b mut [TreeItem<'a>] where 'a: 'b{
+    pub fn children_mut(&mut self) -> &mut [TreeItem<A>] {
         &mut self.children
     }
 
@@ -217,7 +223,7 @@ impl<'a> TreeItem<'a> {
     }
 
     pub fn height(&self) -> usize {
-        self.text.height()
+        self.elem.as_text().height()
     }
 
     #[must_use]
@@ -226,7 +232,7 @@ impl<'a> TreeItem<'a> {
         self
     }
 
-    pub fn add_child(&mut self, child: TreeItem<'a>) {
+    pub fn add_child(&mut self, child: TreeItem<A>) {
         self.children.push(child);
     }
 }
@@ -259,9 +265,9 @@ impl<'a> TreeItem<'a> {
 /// # }
 /// ```
 #[derive(Debug, Clone)]
-pub struct Tree<'a> {
+pub struct Tree<'a, A> {
     block: Option<Block<'a>>,
-    items: Vec<TreeItem<'a>>,
+    items: Vec<TreeItem<A>>,
     /// Style used as a base style for the widget
     style: Style,
     start_corner: Corner,
@@ -271,10 +277,10 @@ pub struct Tree<'a> {
     highlight_symbol: Option<&'a str>,
 }
 
-impl<'a> Tree<'a> {
+impl<'a, A> Tree<'a, A> {
     pub fn new<T>(items: T) -> Self
     where
-        T: Into<Vec<TreeItem<'a>>>,
+        T: Into<Vec<TreeItem<A>>>,
     {
         Self {
             block: None,
@@ -318,7 +324,7 @@ impl<'a> Tree<'a> {
     }
 }
 
-impl<'a> StatefulWidget for Tree<'a> {
+impl<'a, A: TreeItemRender> StatefulWidget for Tree<'a, A> {
     type State = TreeState;
 
     #[allow(clippy::too_many_lines)]
@@ -437,7 +443,7 @@ impl<'a> StatefulWidget for Tree<'a> {
             };
 
             let max_element_width = area.width.saturating_sub(after_depth_x - x);
-            for (j, line) in item.item.text.lines.iter().enumerate() {
+            for (j, line) in item.item.elem.as_text().lines.iter().enumerate() {
                 buf.set_spans(after_depth_x, y + j as u16, line, max_element_width);
             }
             if is_selected {
@@ -447,7 +453,7 @@ impl<'a> StatefulWidget for Tree<'a> {
     }
 }
 
-impl<'a> Widget for Tree<'a> {
+impl<'a, A: TreeItemRender> Widget for Tree<'a, A> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut state = TreeState::default();
         StatefulWidget::render(self, area, buf, &mut state);

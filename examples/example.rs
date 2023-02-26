@@ -17,7 +17,7 @@ use tui::{
 use tui_tree_widget::{Tree, TreeItem};
 
 struct App<'a> {
-    tree: StatefulTree<'a>,
+    tree: StatefulTree<&'a str>,
 }
 
 impl<'a> App<'a> {
@@ -29,7 +29,10 @@ impl<'a> App<'a> {
                     "b",
                     vec![
                         TreeItem::new_leaf("c"),
-                        TreeItem::new("d", vec![TreeItem::new_leaf("e"), TreeItem::new_leaf("f")]),
+                        TreeItem::new(
+                            "d",
+                            vec![TreeItem::new_leaf("e"), TreeItem::new_leaf("f")],
+                        ),
                         TreeItem::new_leaf("g"),
                     ],
                 ),
@@ -37,7 +40,6 @@ impl<'a> App<'a> {
             ]),
         }
     }
-
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -93,10 +95,12 @@ fn run_app<'a, B: Backend>(terminal: &mut Terminal<B>, mut app: App<'a>) -> io::
             match key.code {
                 KeyCode::Char('q') => return Ok(()),
                 KeyCode::Char('a') => {
-                    app.tree.with_selected_leaf(|node| if let Some(node) = node {
-                        node.add_child(TreeItem::new_leaf("text"));
+                    app.tree.with_selected_leaf(|node| {
+                        if let Some(node) = node {
+                            node.add_child(TreeItem::new_leaf("text"));
+                        }
                     });
-                },
+                }
                 KeyCode::Char('\n' | ' ') => app.tree.toggle(),
                 KeyCode::Left => app.tree.left(),
                 KeyCode::Right => app.tree.right(),

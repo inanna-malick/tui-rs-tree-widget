@@ -1,11 +1,11 @@
-use tui_tree_widget::{TreeItem, TreeState};
+use tui_tree_widget::{TreeItem, TreeState, TreeItemRender};
 
-pub struct StatefulTree<'a> {
+pub struct StatefulTree<A> {
     pub state: TreeState,
-    pub items: Vec<TreeItem<'a>>,
+    pub items: Vec<TreeItem<A>>,
 }
 
-impl<'a> StatefulTree<'a> {
+impl<A: TreeItemRender> StatefulTree<A> {
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
@@ -14,7 +14,7 @@ impl<'a> StatefulTree<'a> {
         }
     }
 
-    pub fn with_items(items: Vec<TreeItem<'a>>) -> Self {
+    pub fn with_items(items: Vec<TreeItem<A>>) -> Self {
         Self {
             state: TreeState::default(),
             items,
@@ -49,13 +49,18 @@ impl<'a> StatefulTree<'a> {
         self.state.toggle_selected();
     }
 
-    fn items_mut<'b>(&'b mut self) -> &'b mut Vec<TreeItem<'a>> {
+    fn items_mut<'b>(&'b mut self) -> &'b mut Vec<TreeItem<A>> {
         &mut self.items
     }
 
-    pub fn with_selected_leaf<'b>(&'b mut self, f: impl FnOnce(Option<&'b mut TreeItem<'a>>)) where 'a: 'b
-     {
-        fn traverse<'short, 'long>(path: Vec<usize>, nodes: &'short mut [TreeItem<'long>]) -> Option<&'short mut TreeItem<'long>> where 'long: 'short {
+    pub fn with_selected_leaf<'b>(&'b mut self, f: impl FnOnce(Option<&'b mut TreeItem<A>>))
+    where
+    {
+        fn traverse<'short, A: TreeItemRender>(
+            path: Vec<usize>,
+            nodes: &'short mut [TreeItem<A>],
+        ) -> Option<&'short mut TreeItem<A>>
+        {
             let first = path.first()?;
             let node = nodes.get_mut(*first)?;
             if path.len() == 1 {
